@@ -13,8 +13,37 @@
   </head>
   <body class="shell-body graphical-body">
     <div class="app-frame public-frame graphical-frame">
-      <main class="graphics-workspace" aria-label="Graphical workspace">
-        <canvas id="scene-canvas" aria-label="Blank graphical workspace"></canvas>
+      <main class="storybook" aria-labelledby="app-title">
+        <header class="storybook-header">
+          <div class="brand-lockup">
+            <div class="brand-orb" aria-hidden="true">✦</div>
+            <div>
+              <p class="story-kicker">A little magic, made for you</p>
+              <h1 id="app-title">WonderTales</h1>
+            </div>
+          </div>
+          <p class="header-note">Stories to imagine, listen to, and keep.</p>
+        </header>
+        <section class="prompt-card" aria-labelledby="prompt-title">
+          <div>
+            <p class="story-kicker">Start a new adventure</p>
+            <h2 id="prompt-title">What should today's story be about?</h2>
+          </div>
+          <form id="story-form" class="story-form">
+            <label class="sr-only" for="topic-input">Story topic</label>
+            <input id="topic-input" name="topic" maxlength="160" placeholder="A fox who collects moonbeams..." autocomplete="off" required>
+            <button id="create-button" type="submit"><span>Make my story</span><span aria-hidden="true">↗</span></button>
+          </form>
+          <p class="form-hint">Try a place, a creature, or a curious question.</p>
+        </section>
+        <section id="story-stage" class="story-stage" aria-live="polite">
+          <div class="empty-state">
+            <span class="empty-star" aria-hidden="true">✦</span>
+            <p>Your story will appear here</p>
+            <span>Bring a little curiosity.</span>
+          </div>
+        </section>
+        <p id="status-message" class="status-message" role="status"></p>
       </main>
     </div>
     <div id="app-error" class="app-error" role="alert" aria-live="assertive" hidden></div>

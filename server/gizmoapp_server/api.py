@@ -7,7 +7,7 @@ import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
-from flask import Flask, current_app, g, jsonify, request
+from flask import Flask, Response, current_app, g, jsonify, request
 from werkzeug.exceptions import BadRequest, HTTPException, RequestEntityTooLarge, UnsupportedMediaType
 
 from .capabilities import capability_payload
@@ -18,12 +18,15 @@ from .capabilities.optimization import nearest_neighbor_route
 from .capabilities.search import search_records
 from .config import scoped_path
 from .db import database_readiness, fetch_sample_nodes, get_db, insert_sample_node
+from .llm import CourseLLMError, ask
+from .media import CourseMediaError, generate_image, synthesize_speech
 
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 SLUG_RE = re.compile(r"^[a-z0-9-]{3,40}$")
 MAX_LABEL_LENGTH = 120
 MAX_DESCRIPTION_LENGTH = 2_000
 MAX_SEARCH_QUERY_LENGTH = 200
+MAX_STORY_TOPIC_LENGTH = 160
 
 
 def _health_payload() -> dict[str, Any]:
@@ -180,6 +183,62 @@ def register_api_routes(app: Flask) -> None:
     def capabilities():
         api_base = scoped_path(prefix, "api").rstrip("/")
         return jsonify(capability_payload(api_base, enabled_features))
+
+    @app.post(scoped_path(prefix, "api/story"))
+    def story():
+        payload, error = _json_object()
+        if error:
+            return error
+        topic = payload.get("topic", "")
+        if not isinstance(topic, str) or not topic.strip():
+            return _error_response("topic must be non-empty text", 400)
+        topic = topic.strip()
+        if len(topic) > MAX_STORY_TOPIC_LENGTH:
+            return _error_response(
+                f"topic must be at most {MAX_STORY_TOPIC_LENGTH} characters", 400
+            )
+        prompt = (
+            "You are a warm, imaginative children's storyteller. Write a gentle, "
+            "original bedtime story for children ages 4-8 about this topic: "
+            f"{topic}\n\n"
+            "Keep it 5-7 short paragraphs, around 350-500 words, with a hopeful "
+            "ending. Use simple, vivid language. Do not include a title, preface, "
+            "moral, or notes outside the story. Avoid danger, frightening scenes, "
+            "violence, and unsafe instructions."
+        )
+        try:
+            text = ask(prompt, max_tokens=1200).strip()
+        except CourseLLMError as exc:
+            return _error_response(str(exc), 503)
+        return jsonify({"topic": topic, "story": text})
+
+    @app.post(scoped_path(prefix, "api/media/image"))
+    def media_image():
+        payload, error = _json_object()
+        if error:
+            return error
+        prompt = payload.get("prompt", "")
+        if not isinstance(prompt, str) or not prompt.strip():
+            return _error_response("prompt must be non-empty text", 400)
+        try:
+            result = generate_image(prompt.strip(), model="lcm-sd15", steps=4)
+        except CourseMediaError as exc:
+            return _error_response(str(exc), 503)
+        return Response(result.data, mimetype=result.content_type)
+
+    @app.post(scoped_path(prefix, "api/media/speech"))
+    def media_speech():
+        payload, error = _json_object()
+        if error:
+            return error
+        text = payload.get("text", "")
+        if not isinstance(text, str) or not text.strip():
+            return _error_response("text must be non-empty text", 400)
+        try:
+            result = synthesize_speech(text.strip(), voice="af_heart", language="a")
+        except CourseMediaError as exc:
+            return _error_response(str(exc), 503)
+        return Response(result.data, mimetype=result.content_type)
 
     if "search" in enabled_features:
         @app.get(scoped_path(prefix, "api/search"))
