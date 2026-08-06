@@ -18,6 +18,10 @@ function bootstrap() {
   const listen = document.querySelector("#listen");
   const narration = document.querySelector("#narration");
   const themeToggle = document.querySelector("#theme-toggle");
+  const editForm = document.querySelector("#edit-form");
+  const editRequest = document.querySelector("#edit-request");
+  const submitButton = form.querySelector("button[type=submit]");
+  const editButton = editForm.querySelector("button[type=submit]");
   let story = "";
   let imageUrl = null;
   let audioUrl = null;
@@ -38,6 +42,12 @@ function bootstrap() {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     imageUrl = audioUrl = null;
+    illustration.hidden = true;
+    placeholder.hidden = false;
+    placeholder.querySelector("small").textContent = "Your illustration will appear here";
+    narration.removeAttribute("src");
+    narration.hidden = true;
+    document.querySelector("#media-note").textContent = "";
   }
 
   async function generateMedia(text, topic) {
@@ -73,33 +83,54 @@ function bootstrap() {
     progress.parentElement.querySelector("span").textContent = label;
   }
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const topic = topicInput.value.trim();
-    if (!topic) return;
-    form.querySelector("button[type=submit]").disabled = true;
+  function storyOptions() {
+    return {
+      ageRange: document.querySelector("#age-range").value,
+      theme: document.querySelector("#story-theme").value,
+      length: document.querySelector("#story-length").value,
+      characterName: document.querySelector("#character-name").value.trim(),
+    };
+  }
+
+  async function generateStory(payload, editing = false) {
+    submitButton.disabled = true;
+    editButton.disabled = true;
     result.hidden = true;
-    setStatus("Your storyteller is gathering a little magic...");
+    setStatus(editing ? "Your storyteller is polishing the story..." : "Your storyteller is gathering a little magic...");
     clearMedia();
     try {
-      const payload = await requestJson(`${config.apiBase}/story`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic }), timeoutMs: 30000 });
-      story = payload.story;
-      storyTitle.textContent = topic;
+      const response = await requestJson(`${config.apiBase}/story`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), timeoutMs: 30000 });
+      story = response.story;
+      storyTitle.textContent = payload.topic;
       storyText.innerHTML = story.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${paragraph.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]))}</p>`).join("");
       result.hidden = false;
       setProgress(10, "Story written. Preparing the media...");
       setStatus("The story is ready. Your illustration and narration are on their way...");
       listen.disabled = true;
-      await generateMedia(story, topic);
+      await generateMedia(story, payload.topic);
+      editRequest.value = "";
       setStatus("");
     } catch (error) {
       setStatus(error.message, true);
     } finally {
-      form.querySelector("button[type=submit]").disabled = false;
+      submitButton.disabled = false;
+      editButton.disabled = false;
     }
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const topic = topicInput.value.trim();
+    if (topic) await generateStory({ topic, ...storyOptions() });
+  });
+
+  editForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const request = editRequest.value.trim();
+    if (request && story) await generateStory({ topic: topicInput.value.trim(), existingStory: story, editRequest: request, ...storyOptions() }, true);
   });
   document.querySelectorAll("[data-topic]").forEach((button) => button.addEventListener("click", () => { topicInput.value = button.dataset.topic; topicInput.focus(); }));
-  document.querySelector("#new-story").addEventListener("click", () => { clearMedia(); result.hidden = true; topicInput.focus(); });
+  document.querySelector("#new-story").addEventListener("click", () => { clearMedia(); result.hidden = true; editRequest.value = ""; topicInput.focus(); });
   listen.addEventListener("click", () => { narration.play(); });
   runtime.markReady();
 }

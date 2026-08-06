@@ -27,6 +27,11 @@ MAX_LABEL_LENGTH = 120
 MAX_DESCRIPTION_LENGTH = 2_000
 MAX_SEARCH_QUERY_LENGTH = 200
 MAX_STORY_TOPIC_LENGTH = 160
+MAX_STORY_EDIT_LENGTH = 400
+MAX_STORY_LENGTH = 20_000
+STORY_AGE_RANGES = frozenset({"3-5", "6-8", "9-12"})
+STORY_THEMES = frozenset({"cozy", "funny", "adventurous", "magical"})
+STORY_LENGTHS = {"short": "3-4 short paragraphs, around 200-300 words", "medium": "5-7 short paragraphs, around 350-500 words", "long": "8-10 short paragraphs, around 600-750 words"}
 
 
 def _health_payload() -> dict[str, Any]:
@@ -197,14 +202,44 @@ def register_api_routes(app: Flask) -> None:
             return _error_response(
                 f"topic must be at most {MAX_STORY_TOPIC_LENGTH} characters", 400
             )
+        age_range = payload.get("ageRange", "6-8")
+        story_theme = payload.get("theme", "cozy")
+        story_length = payload.get("length", "medium")
+        character_name = payload.get("characterName", "")
+        edit_request = payload.get("editRequest", "")
+        existing_story = payload.get("existingStory", "")
+        if age_range not in STORY_AGE_RANGES:
+            return _error_response("ageRange must be 3-5, 6-8, or 9-12", 400)
+        if story_theme not in STORY_THEMES:
+            return _error_response("theme must be cozy, funny, adventurous, or magical", 400)
+        if story_length not in STORY_LENGTHS:
+            return _error_response("length must be short, medium, or long", 400)
+        if not isinstance(character_name, str) or len(character_name.strip()) > 60:
+            return _error_response("characterName must be at most 60 characters", 400)
+        if not isinstance(edit_request, str) or len(edit_request.strip()) > MAX_STORY_EDIT_LENGTH:
+            return _error_response(f"editRequest must be at most {MAX_STORY_EDIT_LENGTH} characters", 400)
+        if not isinstance(existing_story, str) or len(existing_story) > MAX_STORY_LENGTH:
+            return _error_response("existingStory is too long", 400)
+        character_name = character_name.strip() or "a character with a fitting name"
+        edit_request = edit_request.strip()
+        existing_story = existing_story.strip()
+        if edit_request and not existing_story:
+            return _error_response("existingStory is required when requesting an edit", 400)
+        length_guidance = STORY_LENGTHS[story_length]
+        edit_guidance = (
+            f"Revise the existing story below according to this reader request: {edit_request}\n"
+            f"Existing story:\n{existing_story}\n"
+            "Return the complete revised story, not commentary about the changes.\n"
+            if edit_request else ""
+        )
         prompt = (
             "You are a warm, imaginative children's storyteller. Write a gentle, "
-            "original bedtime story for children ages 4-8 about this topic: "
-            f"{topic}\n\n"
-            "Keep it 5-7 short paragraphs, around 350-500 words, with a hopeful "
+            f"original bedtime story for children ages {age_range} about this topic: {topic}.\n"
+            f"The story should feel {story_theme}, and its main character should be named {character_name}.\n"
+            f"Keep it {length_guidance}, with a hopeful "
             "ending. Use simple, vivid language. Do not include a title, preface, "
             "moral, or notes outside the story. Avoid danger, frightening scenes, "
-            "violence, and unsafe instructions."
+            f"violence, and unsafe instructions.\n\n{edit_guidance}"
         )
         try:
             text = ask(prompt, max_tokens=1200).strip()
