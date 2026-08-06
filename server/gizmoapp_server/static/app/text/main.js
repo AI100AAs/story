@@ -17,9 +17,16 @@ function bootstrap() {
   const placeholder = document.querySelector("#image-placeholder");
   const listen = document.querySelector("#listen");
   const narration = document.querySelector("#narration");
+  const themeToggle = document.querySelector("#theme-toggle");
   let story = "";
   let imageUrl = null;
   let audioUrl = null;
+
+  themeToggle.addEventListener("click", () => {
+    const dark = document.body.toggleAttribute("data-dark");
+    themeToggle.setAttribute("aria-pressed", String(dark));
+    themeToggle.querySelector("span:last-child").textContent = dark ? "Light mode" : "Dark mode";
+  });
 
   function setStatus(message, error = false) {
     status.textContent = message;
@@ -37,11 +44,13 @@ function bootstrap() {
     // The course media worker is shared by image and speech jobs; do not submit
     // both GPU requests at once or the worker can reject either request.
     try {
+      setProgress(20, "Painting the illustration...");
       const image = await requestMedia(`${config.apiBase}/media/image`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `A warm, whimsical children's book illustration about ${topic}. No text.`, }) });
       imageUrl = URL.createObjectURL(image);
       illustration.src = imageUrl;
       illustration.hidden = false;
       placeholder.hidden = true;
+      setProgress(55, "Illustration ready. Recording narration...");
     } catch (error) {
       placeholder.querySelector("small").textContent = `Illustration unavailable: ${error.message}`;
     }
@@ -51,9 +60,17 @@ function bootstrap() {
       narration.src = audioUrl;
       narration.hidden = false;
       listen.disabled = false;
+      setProgress(100, "Your story is ready to explore.");
     } catch (error) {
       document.querySelector("#media-note").textContent = `Audio unavailable: ${error.message}`;
+      setProgress(100, "Illustration ready. Narration unavailable.");
     }
+  }
+
+  function setProgress(value, label) {
+    const progress = document.querySelector("#media-progress");
+    progress.value = value;
+    progress.parentElement.querySelector("span").textContent = label;
   }
 
   form.addEventListener("submit", async (event) => {
@@ -70,6 +87,7 @@ function bootstrap() {
       storyTitle.textContent = topic;
       storyText.innerHTML = story.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${paragraph.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]))}</p>`).join("");
       result.hidden = false;
+      setProgress(10, "Story written. Preparing the media...");
       setStatus("The story is ready. Your illustration and narration are on their way...");
       listen.disabled = true;
       await generateMedia(story, topic);

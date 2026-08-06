@@ -21,7 +21,7 @@
               <h1>Make a little world<br><em>to get lost in.</em></h1>
               <p class="intro">Give us a topic and a friendly storyteller will write, illustrate, and read a brand-new adventure.</p>
             </div>
-            <div class="header-orbit" aria-hidden="true"><span>✦</span><b>☾</b></div>
+            <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"><span aria-hidden="true">☾</span><span>Dark mode</span></button><div class="header-orbit" aria-hidden="true"><span>✦</span><b>☾</b></div></div>
           </header>
           <form id="story-form" class="story-form">
             <label for="topic">What should the story be about?</label>
@@ -35,14 +35,16 @@
               <button type="button" data-topic="a garden where the vegetables can sing">a singing garden</button>
             </div>
           </form>
-          <div id="status" class="status" role="status" aria-live="polite" hidden></div>
-          <section id="story-result" class="story-result" aria-live="polite" hidden>
+           <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+           <section id="story-result" class="story-result" aria-live="polite" hidden>
             <div class="result-heading"><span class="story-label">Your story</span><button id="new-story" class="quiet-button" type="button">Start another</button></div>
-            <div class="story-grid">
-              <figure class="illustration-card"><div class="image-placeholder" id="image-placeholder"><span>✦</span><small>Your illustration will appear here</small></div><img id="illustration" alt="Story illustration" hidden><figcaption>drawn from your story</figcaption></figure>
-              <article class="story-card"><h2 id="story-title"></h2><div id="story-text"></div><div class="listen-row"><button id="listen" class="listen-button" type="button"><span aria-hidden="true">▶</span> Read it aloud</button><audio id="narration" controls hidden></audio><span id="media-note"></span></div></article>
-            </div>
-          </section>
+             <div class="story-grid">
+               <figure class="illustration-card"><div class="image-placeholder" id="image-placeholder"><span>✦</span><small>Your illustration will appear here</small></div><img id="illustration" alt="Story illustration" hidden><figcaption>drawn from your story</figcaption></figure>
+               <article class="story-card"><h2 id="story-title"></h2><div id="story-text"></div><div class="listen-row"><button id="listen" class="listen-button" type="button"><span aria-hidden="true">▶</span> Read it aloud</button><audio id="narration" controls hidden></audio><span id="media-note"></span></div></article>
+             </div>
+             <div class="media-progress-wrap"><span>Preparing your illustration and narration...</span><progress id="media-progress" max="100" value="0">0%</progress></div>
+           </section>
+          <footer class="course-credit">A sample project developed for <a href="https://www.cs.ubc.ca/~kevinlb/teaching/ai100/" target="_blank" rel="noreferrer">UBC's AI 100: Introduction to Artificial Intelligence</a>.</footer>
         </section>
       </main>
     </div>

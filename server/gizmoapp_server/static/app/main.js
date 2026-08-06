@@ -2,6 +2,15 @@ let config;
 let audioUrl;
 let imageUrl;
 
+function setupTheme() {
+  const toggle = document.getElementById("theme-toggle");
+  toggle.addEventListener("click", () => {
+    const dark = document.body.toggleAttribute("data-dark");
+    toggle.setAttribute("aria-pressed", String(dark));
+    toggle.querySelector("span:last-child").textContent = dark ? "Light mode" : "Dark mode";
+  });
+}
+
 function showStatus(message, tone = "") {
   const status = document.getElementById("status-message");
   status.textContent = message;
@@ -35,11 +44,11 @@ function renderStory(topic, story) {
   layout.className = "story-layout";
   const illustration = document.createElement("div");
   illustration.className = "illustration-card pending";
-  illustration.innerHTML = '<div class="illustration-placeholder"><span>✦</span><small>Painting your story...</small></div>';
+  illustration.innerHTML = '<div class="illustration-placeholder"><span>✦</span><small>Painting your story...</small><progress class="media-progress" id="image-progress" max="100" value="20"></progress></div>';
   illustration.id = "illustration-card";
   const article = document.createElement("article");
   article.className = "story-card";
-  article.innerHTML = `<p class="story-kicker">A WonderTale about</p><h2>${escapeHtml(topic)}</h2><div class="story-copy"></div><div class="story-actions"><button class="listen-button" id="listen-button" type="button">◉ <span>Read it aloud</span></button><span class="audio-note" id="audio-note">Making a gentle voice...</span></div>`;
+  article.innerHTML = `<p class="story-kicker">A WonderTale about</p><h2>${escapeHtml(topic)}</h2><div class="story-copy"></div><div class="story-actions"><button class="listen-button" id="listen-button" type="button">◉ <span>Read it aloud</span></button><span class="audio-note" id="audio-note">Making a gentle voice...</span><progress class="media-progress" id="audio-progress" max="100" value="0"></progress></div>`;
   const copy = article.querySelector(".story-copy");
   paragraphs.forEach((paragraph) => {
     const element = document.createElement("p");
@@ -72,6 +81,8 @@ async function makeMedia(topic, story) {
     image.src = imageUrl;
     image.alt = `Storybook illustration for ${topic}`;
     illustration.append(image);
+    document.getElementById("audio-note").textContent = "Illustration ready. Recording a gentle voice...";
+    document.getElementById("audio-progress").value = 55;
   } catch (error) {
     illustration.classList.remove("pending");
     illustration.innerHTML = `<div class="media-error"><span>Illustration unavailable</span><small>${escapeHtml(error.message)}</small></div>`;
@@ -85,9 +96,11 @@ async function makeMedia(topic, story) {
     const note = document.getElementById("audio-note");
     button.disabled = false;
     note.textContent = "Ready when you are.";
+    document.getElementById("audio-progress").value = 100;
     button.addEventListener("click", () => new Audio(audioUrl).play());
   } catch (error) {
     document.getElementById("audio-note").textContent = error.message;
+    document.getElementById("audio-progress").value = 100;
   }
 }
 
@@ -118,6 +131,7 @@ function bootstrap() {
   const runtime = window.GizmoAppRuntime;
   if (!runtime) throw new Error("The shared app runtime did not load.");
   config = runtime.readConfig();
+  setupTheme();
   document.getElementById("story-form").addEventListener("submit", createStory);
   runtime.markReady();
 }
