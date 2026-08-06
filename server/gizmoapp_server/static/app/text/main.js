@@ -22,9 +22,29 @@ function bootstrap() {
   const editRequest = document.querySelector("#edit-request");
   const submitButton = form.querySelector("button[type=submit]");
   const editButton = editForm.querySelector("button[type=submit]");
+  const surpriseButton = document.querySelector("#surprise-me");
   let story = "";
   let imageUrl = null;
   let audioUrl = null;
+
+  const storyTemplates = [
+    "a tiny whale who is afraid of the ocean",
+    "a fox who finds a door in the moon",
+    "a shy cloud learning to make rainbows",
+    "a garden where the vegetables can sing",
+    "a penguin who opens a seaside library",
+    "a little robot who collects beautiful sounds",
+    "a dragon who only sneezes bubbles",
+    "a squirrel who discovers a map inside an acorn",
+  ];
+  const templateLabels = [
+    "a moon-door fox",
+    "a shy rainbow cloud",
+    "a singing garden",
+    "a seaside penguin library",
+    "a sound-collecting robot",
+    "a bubble-sneezing dragon",
+  ];
 
   themeToggle.addEventListener("click", () => {
     const dark = document.body.toggleAttribute("data-dark");
@@ -51,17 +71,28 @@ function bootstrap() {
   }
 
   async function generateMedia(text, topic) {
+    let imageReady = false;
+    let nextImageUrl = null;
     // The course media worker is shared by image and speech jobs; do not submit
     // both GPU requests at once or the worker can reject either request.
     try {
       setProgress(20, "Painting the illustration...");
       const image = await requestMedia(`${config.apiBase}/media/image`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `A warm, whimsical children's book illustration about ${topic}. No text.`, }) });
-      imageUrl = URL.createObjectURL(image);
-      illustration.src = imageUrl;
+      nextImageUrl = URL.createObjectURL(image);
+      await new Promise((resolve, reject) => {
+        illustration.onload = resolve;
+        illustration.onerror = () => reject(new Error("The illustration could not be displayed."));
+        illustration.src = nextImageUrl;
+      });
+      if (imageUrl) URL.revokeObjectURL(imageUrl);
+      imageUrl = nextImageUrl;
       illustration.hidden = false;
       placeholder.hidden = true;
+      imageReady = true;
       setProgress(55, "Illustration ready. Recording narration...");
     } catch (error) {
+      if (nextImageUrl) URL.revokeObjectURL(nextImageUrl);
+      illustration.removeAttribute("src");
       placeholder.querySelector("small").textContent = `Illustration unavailable: ${error.message}`;
     }
     try {
@@ -73,7 +104,7 @@ function bootstrap() {
       setProgress(100, "Your story is ready to explore.");
     } catch (error) {
       document.querySelector("#media-note").textContent = `Audio unavailable: ${error.message}`;
-      setProgress(100, "Illustration ready. Narration unavailable.");
+      setProgress(100, `${imageReady ? "Illustration ready." : "Illustration unavailable."} Narration unavailable.`);
     }
   }
 
@@ -129,7 +160,25 @@ function bootstrap() {
     const request = editRequest.value.trim();
     if (request && story) await generateStory({ topic: topicInput.value.trim(), existingStory: story, editRequest: request, ...storyOptions() }, true);
   });
+  function shuffleTemplates() {
+    const shuffled = [...storyTemplates].sort(() => Math.random() - 0.5);
+    document.querySelectorAll("[data-topic]").forEach((button, index) => {
+      button.dataset.topic = shuffled[index];
+      button.textContent = templateLabels[index];
+    });
+  }
+
+  shuffleTemplates();
   document.querySelectorAll("[data-topic]").forEach((button) => button.addEventListener("click", () => { topicInput.value = button.dataset.topic; topicInput.focus(); }));
+  surpriseButton.addEventListener("click", () => {
+    topicInput.value = storyTemplates[Math.floor(Math.random() * storyTemplates.length)];
+    document.querySelector("#age-range").value = ["3-5", "6-8", "9-12"][Math.floor(Math.random() * 3)];
+    document.querySelector("#story-theme").value = ["cozy", "funny", "adventurous", "magical"][Math.floor(Math.random() * 4)];
+    document.querySelector("#story-length").value = ["short", "medium", "long"][Math.floor(Math.random() * 3)];
+    document.querySelector("#character-name").value = ["Milo", "Luna", "Pip", "Nia", "Sol"][Math.floor(Math.random() * 5)];
+    setStatus("A surprise story setup is ready. Change anything you like, then begin.");
+    topicInput.focus();
+  });
   document.querySelector("#new-story").addEventListener("click", () => { clearMedia(); result.hidden = true; editRequest.value = ""; topicInput.focus(); });
   listen.addEventListener("click", () => { narration.play(); });
   runtime.markReady();
