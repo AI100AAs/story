@@ -34,25 +34,25 @@ function bootstrap() {
   }
 
   async function generateMedia(text, topic) {
-    const [image, audio] = await Promise.allSettled([
-      requestMedia(`${config.apiBase}/media/image`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `A warm, whimsical children's book illustration about ${topic}. No text.`, }) }),
-      requestMedia(`${config.apiBase}/media/speech`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }),
-    ]);
-    if (image.status === "fulfilled") {
-      imageUrl = URL.createObjectURL(image.value);
+    // The course media worker is shared by image and speech jobs; do not submit
+    // both GPU requests at once or the worker can reject either request.
+    try {
+      const image = await requestMedia(`${config.apiBase}/media/image`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `A warm, whimsical children's book illustration about ${topic}. No text.`, }) });
+      imageUrl = URL.createObjectURL(image);
       illustration.src = imageUrl;
       illustration.hidden = false;
       placeholder.hidden = true;
-    } else {
-      placeholder.querySelector("small").textContent = `Illustration unavailable: ${image.reason.message}`;
+    } catch (error) {
+      placeholder.querySelector("small").textContent = `Illustration unavailable: ${error.message}`;
     }
-    if (audio.status === "fulfilled") {
-      audioUrl = URL.createObjectURL(audio.value);
+    try {
+      const audio = await requestMedia(`${config.apiBase}/media/speech`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      audioUrl = URL.createObjectURL(audio);
       narration.src = audioUrl;
       narration.hidden = false;
       listen.disabled = false;
-    } else {
-      document.querySelector("#media-note").textContent = `Audio unavailable: ${audio.reason.message}`;
+    } catch (error) {
+      document.querySelector("#media-note").textContent = `Audio unavailable: ${error.message}`;
     }
   }
 

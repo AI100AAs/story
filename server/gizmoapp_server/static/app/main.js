@@ -62,7 +62,8 @@ function escapeHtml(value) {
 async function makeMedia(topic, story) {
   const illustration = document.getElementById("illustration-card");
   const imagePrompt = `A charming children's storybook illustration, soft gouache and colored pencil, warm twilight palette, no words or letters, depicting ${topic}. Story mood and details: ${story.slice(0, 700)}`;
-  const imageTask = post("/media/image", { prompt: imagePrompt }).then(async (response) => {
+  try {
+    const response = await post("/media/image", { prompt: imagePrompt });
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     imageUrl = URL.createObjectURL(await response.blob());
     illustration.classList.remove("pending");
@@ -71,11 +72,13 @@ async function makeMedia(topic, story) {
     image.src = imageUrl;
     image.alt = `Storybook illustration for ${topic}`;
     illustration.append(image);
-  }).catch((error) => {
+  } catch (error) {
     illustration.classList.remove("pending");
     illustration.innerHTML = `<div class="media-error"><span>Illustration unavailable</span><small>${escapeHtml(error.message)}</small></div>`;
-  });
-  const speechTask = post("/media/speech", { text: story }).then(async (response) => {
+  }
+  // Image and speech share the course GPU worker, so keep these jobs in order.
+  try {
+    const response = await post("/media/speech", { text: story });
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     audioUrl = URL.createObjectURL(await response.blob());
     const button = document.getElementById("listen-button");
@@ -83,10 +86,9 @@ async function makeMedia(topic, story) {
     button.disabled = false;
     note.textContent = "Ready when you are.";
     button.addEventListener("click", () => new Audio(audioUrl).play());
-  }).catch((error) => {
+  } catch (error) {
     document.getElementById("audio-note").textContent = error.message;
-  });
-  await Promise.allSettled([imageTask, speechTask]);
+  }
 }
 
 async function createStory(event) {
