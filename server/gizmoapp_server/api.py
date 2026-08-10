@@ -19,7 +19,7 @@ from .capabilities.search import search_records
 from .config import scoped_path
 from .db import database_readiness, fetch_sample_nodes, get_db, insert_sample_node
 from .llm import CourseLLMError, ask
-from .media import CourseMediaError, generate_image, synthesize_speech
+from .media import CourseMediaError, generate_image
 
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 SLUG_RE = re.compile(r"^[a-z0-9-]{3,40}$")
@@ -257,20 +257,6 @@ def register_api_routes(app: Flask) -> None:
             return _error_response("prompt must be non-empty text", 400)
         try:
             result = generate_image(prompt.strip(), model="lcm-sd15", steps=4)
-        except CourseMediaError as exc:
-            return _error_response(str(exc), 503)
-        return Response(result.data, mimetype=result.content_type)
-
-    @app.post(scoped_path(prefix, "api/media/speech"))
-    def media_speech():
-        payload, error = _json_object()
-        if error:
-            return error
-        text = payload.get("text", "")
-        if not isinstance(text, str) or not text.strip():
-            return _error_response("text must be non-empty text", 400)
-        try:
-            result = synthesize_speech(text.strip(), voice="af_heart", language="a")
         except CourseMediaError as exc:
             return _error_response(str(exc), 503)
         return Response(result.data, mimetype=result.content_type)

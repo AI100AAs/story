@@ -16,7 +16,6 @@ function bootstrap() {
   const illustration = document.querySelector("#illustration");
   const placeholder = document.querySelector("#image-placeholder");
   const listen = document.querySelector("#listen");
-  const narration = document.querySelector("#narration");
   const themeToggle = document.querySelector("#theme-toggle");
   const editForm = document.querySelector("#edit-form");
   const editRequest = document.querySelector("#edit-request");
@@ -25,7 +24,7 @@ function bootstrap() {
   const surpriseButton = document.querySelector("#surprise-me");
   let story = "";
   let imageUrl = null;
-  let audioUrl = null;
+  let speech = null;
 
   const storyTemplates = [
     "a tiny whale who is afraid of the ocean",
@@ -60,21 +59,18 @@ function bootstrap() {
 
   function clearMedia() {
     if (imageUrl) URL.revokeObjectURL(imageUrl);
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
-    imageUrl = audioUrl = null;
+    if (speech) window.speechSynthesis?.cancel();
+    speech = null;
+    imageUrl = null;
     illustration.hidden = true;
     placeholder.hidden = false;
     placeholder.querySelector("small").textContent = "Your illustration will appear here";
-    narration.removeAttribute("src");
-    narration.hidden = true;
     document.querySelector("#media-note").textContent = "";
   }
 
   async function generateMedia(text, topic) {
     let imageReady = false;
     let nextImageUrl = null;
-    // The course media worker is shared by image and speech jobs; do not submit
-    // both GPU requests at once or the worker can reject either request.
     try {
       setProgress(20, "Painting the illustration...");
       const image = await requestMedia(`${config.apiBase}/media/image`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `A warm, whimsical children's book illustration about ${topic}. No text.`, }) });
@@ -89,23 +85,18 @@ function bootstrap() {
       illustration.hidden = false;
       placeholder.hidden = true;
       imageReady = true;
-      setProgress(55, "Illustration ready. Recording narration...");
+      setProgress(55, "Illustration ready. Browser narration is ready...");
     } catch (error) {
       if (nextImageUrl) URL.revokeObjectURL(nextImageUrl);
       illustration.removeAttribute("src");
       placeholder.querySelector("small").textContent = `Illustration unavailable: ${error.message}`;
     }
-    try {
-      const audio = await requestMedia(`${config.apiBase}/media/speech`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
-      audioUrl = URL.createObjectURL(audio);
-      narration.src = audioUrl;
-      narration.hidden = false;
-      listen.disabled = false;
-      setProgress(100, "Your story is ready to explore.");
-    } catch (error) {
-      document.querySelector("#media-note").textContent = `Audio unavailable: ${error.message}`;
-      setProgress(100, `${imageReady ? "Illustration ready." : "Illustration unavailable."} Narration unavailable.`);
-    }
+    const supported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+    listen.disabled = !supported;
+    document.querySelector("#media-note").textContent = supported
+      ? "Your browser will read the story aloud."
+      : "Speech playback is not supported in this browser.";
+    setProgress(100, `${imageReady ? "Illustration ready." : "Illustration unavailable."} Your story is ready to explore.`);
   }
 
   function setProgress(value, label) {
@@ -136,7 +127,7 @@ function bootstrap() {
       storyText.innerHTML = story.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${paragraph.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]))}</p>`).join("");
       result.hidden = false;
       setProgress(10, "Story written. Preparing the media...");
-      setStatus("The story is ready. Your illustration and narration are on their way...");
+      setStatus("The story is ready. Your illustration is on its way, and your browser can read the story aloud.");
       listen.disabled = true;
       await generateMedia(story, payload.topic);
       editRequest.value = "";
@@ -180,7 +171,30 @@ function bootstrap() {
     topicInput.focus();
   });
   document.querySelector("#new-story").addEventListener("click", () => { clearMedia(); result.hidden = true; editRequest.value = ""; topicInput.focus(); });
-  listen.addEventListener("click", () => { narration.play(); });
+  listen.addEventListener("click", () => {
+    if (!("speechSynthesis" in window && "SpeechSynthesisUtterance" in window)) return;
+    if (speech) {
+      window.speechSynthesis.cancel();
+      speech = null;
+      listen.textContent = "▶ Read it aloud";
+      document.querySelector("#media-note").textContent = "Paused. Press the button to start again.";
+      return;
+    }
+    speech = new SpeechSynthesisUtterance(story);
+    speech.rate = 0.95;
+    speech.pitch = 1.05;
+    speech.onstart = () => {
+      listen.textContent = "■ Stop reading";
+      document.querySelector("#media-note").textContent = "Reading with your browser's voice...";
+    };
+    speech.onend = () => {
+      speech = null;
+      listen.textContent = "▶ Read it aloud";
+      document.querySelector("#media-note").textContent = "Ready when you are.";
+    };
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+  });
   runtime.markReady();
 }
 

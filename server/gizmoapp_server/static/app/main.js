@@ -1,6 +1,6 @@
 let config;
-let audioUrl;
 let imageUrl;
+let spokenStory = null;
 
 function setupTheme() {
   const toggle = document.getElementById("theme-toggle");
@@ -48,7 +48,7 @@ function renderStory(topic, story) {
   illustration.id = "illustration-card";
   const article = document.createElement("article");
   article.className = "story-card";
-  article.innerHTML = `<p class="story-kicker">A WonderTale about</p><h2>${escapeHtml(topic)}</h2><div class="story-copy"></div><div class="story-actions"><button class="listen-button" id="listen-button" type="button">◉ <span>Read it aloud</span></button><span class="audio-note" id="audio-note">Making a gentle voice...</span><progress class="media-progress" id="audio-progress" max="100" value="0"></progress></div>`;
+  article.innerHTML = `<p class="story-kicker">A WonderTale about</p><h2>${escapeHtml(topic)}</h2><div class="story-copy"></div><div class="story-actions"><button class="listen-button" id="listen-button" type="button">◉ <span>Read it aloud</span></button><span class="audio-note" id="audio-note">Your browser will read this story aloud.</span><progress class="media-progress" id="audio-progress" max="100" value="0"></progress></div>`;
   const copy = article.querySelector(".story-copy");
   paragraphs.forEach((paragraph) => {
     const element = document.createElement("p");
@@ -81,26 +81,42 @@ async function makeMedia(topic, story) {
     image.src = imageUrl;
     image.alt = `Storybook illustration for ${topic}`;
     illustration.append(image);
-    document.getElementById("audio-note").textContent = "Illustration ready. Recording a gentle voice...";
+    document.getElementById("audio-note").textContent = "Illustration ready. Your browser voice is ready.";
     document.getElementById("audio-progress").value = 55;
   } catch (error) {
     illustration.classList.remove("pending");
     illustration.innerHTML = `<div class="media-error"><span>Illustration unavailable</span><small>${escapeHtml(error.message)}</small></div>`;
   }
-  // Image and speech share the course GPU worker, so keep these jobs in order.
-  try {
-    const response = await post("/media/speech", { text: story });
-    if (audioUrl) URL.revokeObjectURL(audioUrl);
-    audioUrl = URL.createObjectURL(await response.blob());
-    const button = document.getElementById("listen-button");
-    const note = document.getElementById("audio-note");
-    button.disabled = false;
-    note.textContent = "Ready when you are.";
-    document.getElementById("audio-progress").value = 100;
-    button.addEventListener("click", () => new Audio(audioUrl).play());
-  } catch (error) {
-    document.getElementById("audio-note").textContent = error.message;
-    document.getElementById("audio-progress").value = 100;
+  const button = document.getElementById("listen-button");
+  const note = document.getElementById("audio-note");
+  const supported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  button.disabled = !supported;
+  note.textContent = supported ? "Ready when you are." : "Speech playback is not supported in this browser.";
+  document.getElementById("audio-progress").value = 100;
+  if (supported) {
+    button.addEventListener("click", () => {
+      if (spokenStory) {
+        window.speechSynthesis.cancel();
+        spokenStory = null;
+        button.querySelector("span").textContent = "Read it aloud";
+        note.textContent = "Paused. Press the button to start again.";
+        return;
+      }
+      spokenStory = new SpeechSynthesisUtterance(story);
+      spokenStory.rate = 0.95;
+      spokenStory.pitch = 1.05;
+      spokenStory.onstart = () => {
+        button.querySelector("span").textContent = "Stop reading";
+        note.textContent = "Reading with your browser's voice...";
+      };
+      spokenStory.onend = () => {
+        spokenStory = null;
+        button.querySelector("span").textContent = "Read it aloud";
+        note.textContent = "Ready when you are.";
+      };
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(spokenStory);
+    });
   }
 }
 
@@ -116,8 +132,12 @@ async function createStory(event) {
   try {
     const response = await post("/story", { topic });
     const payload = await response.json();
+    if (spokenStory) {
+      window.speechSynthesis.cancel();
+      spokenStory = null;
+    }
     renderStory(payload.topic, payload.story);
-    showStatus("Your story is ready. The painting and voice are joining us now.");
+    showStatus("Your story is ready. The painting is joining us, and your browser can read it aloud.");
     void makeMedia(payload.topic, payload.story);
   } catch (error) {
     showStatus(error.message, "error");
