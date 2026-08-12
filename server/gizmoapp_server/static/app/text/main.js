@@ -15,6 +15,7 @@ function bootstrap() {
   const storyTitle = document.querySelector("#story-title");
   const illustration = document.querySelector("#illustration");
   const placeholder = document.querySelector("#image-placeholder");
+  const retryIllustration = document.querySelector("#retry-illustration");
   const listen = document.querySelector("#listen");
   const themeToggle = document.querySelector("#theme-toggle");
   const editForm = document.querySelector("#edit-form");
@@ -25,6 +26,8 @@ function bootstrap() {
   let story = "";
   let imageUrl = null;
   let speech = null;
+  let currentTopic = "";
+  let mediaBusy = false;
 
   const storyTemplates = [
     "a tiny whale who is afraid of the ocean",
@@ -65,10 +68,13 @@ function bootstrap() {
     illustration.hidden = true;
     placeholder.hidden = false;
     placeholder.querySelector("small").textContent = "Your illustration will appear here";
+    retryIllustration.hidden = true;
     document.querySelector("#media-note").textContent = "";
   }
 
   async function generateMedia(text, topic) {
+    if (mediaBusy) return;
+    mediaBusy = true;
     let imageReady = false;
     let nextImageUrl = null;
     try {
@@ -85,11 +91,13 @@ function bootstrap() {
       illustration.hidden = false;
       placeholder.hidden = true;
       imageReady = true;
+      retryIllustration.hidden = true;
       setProgress(55, "Illustration ready. Browser narration is ready...");
     } catch (error) {
       if (nextImageUrl) URL.revokeObjectURL(nextImageUrl);
       illustration.removeAttribute("src");
       placeholder.querySelector("small").textContent = `Illustration unavailable: ${error.message}`;
+      retryIllustration.hidden = false;
     }
     const supported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
     listen.disabled = !supported;
@@ -97,6 +105,7 @@ function bootstrap() {
       ? "Your browser will read the story aloud."
       : "Speech playback is not supported in this browser.";
     setProgress(100, `${imageReady ? "Illustration ready." : "Illustration unavailable."} Your story is ready to explore.`);
+    mediaBusy = false;
   }
 
   function setProgress(value, label) {
@@ -114,6 +123,8 @@ function bootstrap() {
     };
   }
 
+  retryIllustration.addEventListener("click", () => generateMedia(story, currentTopic));
+
   async function generateStory(payload, editing = false) {
     submitButton.disabled = true;
     editButton.disabled = true;
@@ -123,6 +134,7 @@ function bootstrap() {
     try {
       const response = await requestJson(`${config.apiBase}/story`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), timeoutMs: 30000 });
       story = response.story;
+      currentTopic = payload.topic;
       storyTitle.textContent = payload.topic;
       storyText.innerHTML = story.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${paragraph.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]))}</p>`).join("");
       result.hidden = false;
