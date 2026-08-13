@@ -70,6 +70,7 @@ function bootstrap() {
     placeholder.querySelector("small").textContent = "Your illustration will appear here";
     retryIllustration.hidden = true;
     document.querySelector("#media-note").textContent = "";
+    listen.textContent = "▶ Read it aloud";
   }
 
   async function generateMedia(text, topic) {
@@ -128,11 +129,12 @@ function bootstrap() {
   async function generateStory(payload, editing = false) {
     submitButton.disabled = true;
     editButton.disabled = true;
-    result.hidden = true;
+    if (!editing) result.hidden = true;
     setStatus(editing ? "Your storyteller is polishing the story..." : "Your storyteller is gathering a little magic...");
-    clearMedia();
+    if (!editing) clearMedia();
     try {
       const response = await requestJson(`${config.apiBase}/story`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), timeoutMs: 30000 });
+      clearMedia();
       story = response.story;
       currentTopic = payload.topic;
       storyTitle.textContent = payload.topic;
@@ -199,10 +201,15 @@ function bootstrap() {
       listen.textContent = "■ Stop reading";
       document.querySelector("#media-note").textContent = "Reading with your browser's voice...";
     };
-    speech.onend = () => {
+     speech.onend = () => {
+       speech = null;
+       listen.textContent = "▶ Read it aloud";
+       document.querySelector("#media-note").textContent = "Ready when you are.";
+     };
+    speech.onerror = () => {
       speech = null;
       listen.textContent = "▶ Read it aloud";
-      document.querySelector("#media-note").textContent = "Ready when you are.";
+      document.querySelector("#media-note").textContent = "Speech playback stopped. Press the button to try again.";
     };
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(speech);
