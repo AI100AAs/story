@@ -70,7 +70,7 @@
 .status { margin: 1.4rem auto; max-width: 74rem; color: var(--accent); font-weight: 750; }
 .status.is-error { color: var(--danger); }
 .result-heading { display: flex; justify-content: space-between; align-items: center; margin: 3rem 0 1rem; }
-.story-grid { display: grid; grid-template-columns: minmax(12rem, .8fr) minmax(0, 1.2fr); gap: 1.2rem; }
+.story-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.2rem; }
 .story-card { padding: clamp(1.2rem, 4vw, 2.4rem); background: #fff; }
 .story-card h2 { margin: 0 0 1.3rem; color: #254d59; font-family: "Trebuchet MS", sans-serif; font-size: 1.8rem; font-weight: 900; text-transform: capitalize; }
 #story-text { color: #46606a; line-height: 1.75; }.story-card p { margin: 0 0 1rem; }
