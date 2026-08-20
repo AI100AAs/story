@@ -53,7 +53,7 @@ class GizmoAppTestCase(unittest.TestCase):
         self.assertEqual(bootstrap.get_json()["app"]["shell"], "graphical")
         self.assertEqual(ready.status_code, 200)
         self.assertEqual(ready.get_json()["status"], "ready")
-        self.assertEqual(ready.get_json()["schemaVersion"], 2)
+        self.assertEqual(ready.get_json()["schemaVersion"], 3)
 
     def test_optional_routes_are_disabled_by_default(self):
         app = self.make_app(enabled_features=frozenset())

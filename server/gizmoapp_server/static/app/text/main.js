@@ -15,6 +15,11 @@ function bootstrap() {
   const storyTitle = document.querySelector("#story-title");
   const listen = document.querySelector("#listen");
   const themeToggle = document.querySelector("#theme-toggle");
+  const historyToggle = document.querySelector("#history-toggle");
+  const historyPanel = document.querySelector("#history-panel");
+  const historyClose = document.querySelector("#history-close");
+  const historyList = document.querySelector("#history-list");
+  const historyEmpty = document.querySelector("#history-empty");
   const editForm = document.querySelector("#edit-form");
   const editRequest = document.querySelector("#edit-request");
   const submitButton = form.querySelector("button[type=submit]");
@@ -22,6 +27,7 @@ function bootstrap() {
   const surpriseButton = document.querySelector("#surprise-me");
   let story = "";
   let speech = null;
+  let savedStories = [];
 
   const storyTemplates = [
     "a tiny whale who is afraid of the ocean",
@@ -77,6 +83,37 @@ function bootstrap() {
     };
   }
 
+  function renderHistory() {
+    historyEmpty.hidden = savedStories.length > 0;
+    historyList.innerHTML = savedStories.map((saved) => {
+      const date = new Date(`${saved.createdAt.replace(" ", "T")}Z`).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+      return `<article class="history-item"><button type="button" data-history-id="${saved.id}"><strong>${escapeHtml(saved.topic)}</strong><span>${escapeHtml(saved.theme)} · ${escapeHtml(saved.length)} · ${date}</span></button><button class="history-delete" type="button" data-delete-id="${saved.id}" aria-label="Delete ${escapeHtml(saved.topic)}">×</button></article>`;
+    }).join("");
+  }
+
+  function escapeHtml(value) {
+    return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  }
+/*
+    return String(value).replace(/[&<>"]/g, (character) => {
+      if (character === "&") return "&amp;";
+      if (character === "<") return "&lt;";
+      if (character === ">") return "&gt;";
+      return "&quot;";
+    });
+  }
+
+*/
+  async function loadHistory() {
+    try {
+      savedStories = (await requestJson(`${config.apiBase}/story-history`)).stories;
+      renderHistory();
+    } catch (error) {
+      historyEmpty.textContent = "Saved stories are unavailable right now.";
+      historyEmpty.hidden = false;
+    }
+  }
+
   async function generateStory(payload, editing = false) {
     submitButton.disabled = true;
     editButton.disabled = true;
@@ -87,6 +124,8 @@ function bootstrap() {
       const response = await requestJson(`${config.apiBase}/story`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), timeoutMs: 30000 });
       clearMedia();
       story = response.story;
+      savedStories = [response, ...savedStories.filter((saved) => saved.id !== response.id)];
+      renderHistory();
       storyTitle.textContent = payload.topic;
       storyText.innerHTML = story.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${paragraph.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]))}</p>`).join("");
       result.hidden = false;
@@ -101,6 +140,26 @@ function bootstrap() {
       editButton.disabled = false;
     }
   }
+
+  historyToggle.addEventListener("click", () => { historyPanel.hidden = !historyPanel.hidden; historyToggle.setAttribute("aria-expanded", String(!historyPanel.hidden)); });
+  historyClose.addEventListener("click", () => { historyPanel.hidden = true; historyToggle.setAttribute("aria-expanded", "false"); });
+  historyList.addEventListener("click", async (event) => {
+    const deleteButton = event.target.closest("[data-delete-id]");
+    if (deleteButton) {
+      const id = Number(deleteButton.dataset.deleteId);
+      try { await requestJson(`${config.apiBase}/story-history/${id}`, { method: "DELETE" }); savedStories = savedStories.filter((saved) => saved.id !== id); renderHistory(); } catch (error) { setStatus(error.message, true); }
+      return;
+    }
+    const storyButton = event.target.closest("[data-history-id]");
+    if (!storyButton) return;
+    const saved = savedStories.find((item) => item.id === Number(storyButton.dataset.historyId));
+    if (!saved) return;
+    story = saved.story; topicInput.value = saved.topic; storyTitle.textContent = saved.topic;
+    document.querySelector("#age-range").value = saved.ageRange; document.querySelector("#story-theme").value = saved.theme;
+    document.querySelector("#story-length").value = saved.length; document.querySelector("#character-name").value = saved.characterName;
+    storyText.innerHTML = story.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+    result.hidden = false; prepareSpeech(); clearMedia(); historyPanel.hidden = true; historyToggle.setAttribute("aria-expanded", "false");
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -163,6 +222,7 @@ function bootstrap() {
     window.speechSynthesis.speak(speech);
   });
   runtime.markReady();
+  loadHistory();
 }
 
 

@@ -17,7 +17,15 @@ from .capabilities.ml import run_kmeans, sklearn_status
 from .capabilities.optimization import nearest_neighbor_route
 from .capabilities.search import search_records
 from .config import scoped_path
-from .db import database_readiness, fetch_sample_nodes, get_db, insert_sample_node
+from .db import (
+    database_readiness,
+    delete_story_history,
+    fetch_sample_nodes,
+    fetch_story_history,
+    get_db,
+    insert_sample_node,
+    insert_story_history,
+)
 from .llm import CourseLLMError, ask
 
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -244,7 +252,25 @@ def register_api_routes(app: Flask) -> None:
             text = ask(prompt, max_tokens=4096).strip()
         except CourseLLMError as exc:
             return _error_response(str(exc), 503)
-        return jsonify({"topic": topic, "story": text})
+        history = insert_story_history(get_db(), {
+            "topic": topic,
+            "story": text,
+            "ageRange": age_range,
+            "theme": story_theme,
+            "length": story_length,
+            "characterName": character_name,
+        })
+        return jsonify(history)
+
+    @app.get(scoped_path(prefix, "api/story-history"))
+    def story_history():
+        return jsonify({"stories": fetch_story_history(get_db())})
+
+    @app.delete(scoped_path(prefix, "api/story-history/<int:story_id>"))
+    def remove_story_history(story_id: int):
+        if not delete_story_history(get_db(), story_id):
+            return _error_response("Saved story was not found", 404)
+        return jsonify({"deleted": story_id})
 
     if "search" in enabled_features:
         @app.get(scoped_path(prefix, "api/search"))

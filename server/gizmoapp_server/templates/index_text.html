@@ -21,7 +21,7 @@
               <h1>Let's make a story<br><em>full of wonder!</em></h1>
               <p class="intro">Pick an idea, add a little magic, and your friendly storyteller will write and read a brand-new adventure.</p>
             </div>
-            <div class="header-tools"><button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"><span aria-hidden="true">☾</span><span>Dark mode</span></button><div class="header-orbit" aria-hidden="true"><span>✦</span><b>☾</b></div></div>
+            <div class="header-tools"><button id="history-toggle" class="theme-toggle" type="button" aria-expanded="false"><span aria-hidden="true">▣</span><span>Saved stories</span></button><button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false"><span aria-hidden="true">☾</span><span>Dark mode</span></button><div class="header-orbit" aria-hidden="true"><span>✦</span><b>☾</b></div></div>
           </header>
           <form id="story-form" class="story-form">
             <label for="topic"><span class="step-badge">1</span> What should the story be about?</label>
@@ -50,6 +50,11 @@
                  <article class="story-card"><h2 id="story-title"></h2><div id="story-text"></div><div class="listen-row"><button id="listen" class="listen-button" type="button"><span aria-hidden="true">▶</span> Read it aloud</button><span id="media-note"></span></div><form id="edit-form" class="edit-form"><label for="edit-request">Want to change something?</label><div class="edit-row"><input id="edit-request" maxlength="400" placeholder="Make the ending funnier, or add a friendly dragon..." required><button class="quiet-button" type="submit">Revise story</button></div></form></article>
               </div>
            </section>
+           <aside id="history-panel" class="history-panel" hidden aria-label="Saved stories">
+             <div class="history-heading"><div><span class="story-label">Your library</span><h2>Saved stories</h2></div><button id="history-close" class="quiet-button" type="button">Close</button></div>
+             <p id="history-empty" class="history-empty">Stories you create will appear here.</p>
+             <div id="history-list" class="history-list"></div>
+           </aside>
           <footer class="course-credit">A sample project developed for <a href="https://www.cs.ubc.ca/~kevinlb/teaching/ai100/" target="_blank" rel="noreferrer">UBC's AI 100: Introduction to Artificial Intelligence</a>.</footer>
         </section>
       </main>

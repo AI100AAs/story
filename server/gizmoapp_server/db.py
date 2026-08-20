@@ -37,6 +37,18 @@ CREATE TABLE IF NOT EXISTS app_events (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 """,
+    3: """
+CREATE TABLE IF NOT EXISTS story_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic TEXT NOT NULL,
+    story TEXT NOT NULL,
+    age_range TEXT NOT NULL,
+    theme TEXT NOT NULL,
+    length TEXT NOT NULL,
+    character_name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+""",
 }
 LATEST_SCHEMA_VERSION = max(SCHEMA_MIGRATIONS)
 BUSY_TIMEOUT_MS = 10_000
@@ -239,12 +251,65 @@ def insert_sample_node(connection: sqlite3.Connection, payload: dict[str, Any]) 
     return dict(row)
 
 
+def insert_story_history(connection: sqlite3.Connection, payload: dict[str, Any]) -> dict[str, Any]:
+    parameters = (
+        payload["topic"], payload["story"], payload["ageRange"], payload["theme"],
+        payload["length"], payload["characterName"],
+    )
+    for delay in (*WRITE_RETRY_DELAYS, None):
+        try:
+            cursor = connection.execute(
+                """
+                INSERT INTO story_history
+                    (topic, story, age_range, theme, length, character_name)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                parameters,
+            )
+            connection.commit()
+            break
+        except sqlite3.OperationalError as exc:
+            connection.rollback()
+            if "locked" not in str(exc).lower() or delay is None:
+                raise
+            time.sleep(delay)
+
+    row = connection.execute(
+        """
+        SELECT id, topic, story, age_range AS ageRange, theme, length,
+               character_name AS characterName, created_at AS createdAt
+        FROM story_history WHERE id = ?
+        """,
+        (cursor.lastrowid,),
+    ).fetchone()
+    return dict(row)
+
+
+def fetch_story_history(connection: sqlite3.Connection, limit: int = 50) -> list[dict[str, Any]]:
+    rows = connection.execute(
+        """
+        SELECT id, topic, story, age_range AS ageRange, theme, length,
+               character_name AS characterName, created_at AS createdAt
+        FROM story_history ORDER BY id DESC LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def delete_story_history(connection: sqlite3.Connection, story_id: int) -> bool:
+    cursor = connection.execute("DELETE FROM story_history WHERE id = ?", (story_id,))
+    connection.commit()
+    return cursor.rowcount > 0
+
+
 def database_summary(config: dict) -> dict[str, Any]:
     connection = _connect(str(config["DB_PATH"]))
     try:
         count = connection.execute("SELECT COUNT(*) FROM sample_nodes").fetchone()[0]
         state_count = connection.execute("SELECT COUNT(*) FROM app_state").fetchone()[0]
         event_count = connection.execute("SELECT COUNT(*) FROM app_events").fetchone()[0]
+        story_count = connection.execute("SELECT COUNT(*) FROM story_history").fetchone()[0]
         current_schema_version = schema_version(connection)
     finally:
         connection.close()
@@ -254,5 +319,6 @@ def database_summary(config: dict) -> dict[str, Any]:
         "sample_node_count": count,
         "app_state_count": state_count,
         "app_event_count": event_count,
+        "story_history_count": story_count,
         "schema_version": current_schema_version,
     }
