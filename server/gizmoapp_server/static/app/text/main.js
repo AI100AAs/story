@@ -1,4 +1,4 @@
-import { requestJson, requestMedia } from "../api.js";
+import { requestJson } from "../api.js";
 
 function bootstrap() {
   const runtime = window.GizmoAppRuntime;
@@ -13,9 +13,6 @@ function bootstrap() {
   const result = document.querySelector("#story-result");
   const storyText = document.querySelector("#story-text");
   const storyTitle = document.querySelector("#story-title");
-  const illustration = document.querySelector("#illustration");
-  const placeholder = document.querySelector("#image-placeholder");
-  const retryIllustration = document.querySelector("#retry-illustration");
   const listen = document.querySelector("#listen");
   const themeToggle = document.querySelector("#theme-toggle");
   const editForm = document.querySelector("#edit-form");
@@ -24,10 +21,7 @@ function bootstrap() {
   const editButton = editForm.querySelector("button[type=submit]");
   const surpriseButton = document.querySelector("#surprise-me");
   let story = "";
-  let imageUrl = null;
   let speech = null;
-  let currentTopic = "";
-  let mediaBusy = false;
 
   const storyTemplates = [
     "a tiny whale who is afraid of the ocean",
@@ -61,58 +55,17 @@ function bootstrap() {
   }
 
   function clearMedia() {
-    if (imageUrl) URL.revokeObjectURL(imageUrl);
     if (speech) window.speechSynthesis?.cancel();
     speech = null;
-    imageUrl = null;
-    illustration.hidden = true;
-    placeholder.hidden = false;
-    placeholder.querySelector("small").textContent = "Your illustration will appear here";
-    retryIllustration.hidden = true;
     document.querySelector("#media-note").textContent = "";
     listen.textContent = "▶ Read it aloud";
   }
-
-  async function generateMedia(text, topic) {
-    if (mediaBusy) return;
-    mediaBusy = true;
-    let imageReady = false;
-    let nextImageUrl = null;
-    try {
-      setProgress(20, "Painting the illustration...");
-      const image = await requestMedia(`${config.apiBase}/media/image`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: `A warm, whimsical children's book illustration about ${topic}. No text.`, }) });
-      nextImageUrl = URL.createObjectURL(image);
-      await new Promise((resolve, reject) => {
-        illustration.onload = resolve;
-        illustration.onerror = () => reject(new Error("The illustration could not be displayed."));
-        illustration.src = nextImageUrl;
-      });
-      if (imageUrl) URL.revokeObjectURL(imageUrl);
-      imageUrl = nextImageUrl;
-      illustration.hidden = false;
-      placeholder.hidden = true;
-      imageReady = true;
-      retryIllustration.hidden = true;
-      setProgress(55, "Illustration ready. Browser narration is ready...");
-    } catch (error) {
-      if (nextImageUrl) URL.revokeObjectURL(nextImageUrl);
-      illustration.removeAttribute("src");
-      placeholder.querySelector("small").textContent = `Illustration unavailable: ${error.message}`;
-      retryIllustration.hidden = false;
-    }
+  function prepareSpeech() {
     const supported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
     listen.disabled = !supported;
     document.querySelector("#media-note").textContent = supported
       ? "Your browser will read the story aloud."
       : "Speech playback is not supported in this browser.";
-    setProgress(100, `${imageReady ? "Illustration ready." : "Illustration unavailable."} Your story is ready to explore.`);
-    mediaBusy = false;
-  }
-
-  function setProgress(value, label) {
-    const progress = document.querySelector("#media-progress");
-    progress.value = value;
-    progress.parentElement.querySelector("span").textContent = label;
   }
 
   function storyOptions() {
@@ -124,8 +77,6 @@ function bootstrap() {
     };
   }
 
-  retryIllustration.addEventListener("click", () => generateMedia(story, currentTopic));
-
   async function generateStory(payload, editing = false) {
     submitButton.disabled = true;
     editButton.disabled = true;
@@ -136,14 +87,11 @@ function bootstrap() {
       const response = await requestJson(`${config.apiBase}/story`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), timeoutMs: 30000 });
       clearMedia();
       story = response.story;
-      currentTopic = payload.topic;
       storyTitle.textContent = payload.topic;
       storyText.innerHTML = story.split(/\n+/).filter(Boolean).map((paragraph) => `<p>${paragraph.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[character]))}</p>`).join("");
       result.hidden = false;
-      setProgress(10, "Story written. Preparing the media...");
-      setStatus("The story is ready. Your illustration is on its way, and your browser can read the story aloud.");
-      listen.disabled = true;
-      await generateMedia(story, payload.topic);
+      prepareSpeech();
+      setStatus("The story is ready. Your browser can read it aloud.");
       editRequest.value = "";
       setStatus("");
     } catch (error) {

@@ -36,37 +36,6 @@ export async function requestJson(url, options = {}) {
   }
 }
 
-export async function requestMedia(url, options = {}) {
-  const controller = new AbortController();
-  const timeoutMs = options.timeoutMs || 65000;
-  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: { Accept: "image/png, audio/wav, application/json", ...(options.headers || {}) },
-    });
-    if (!response.ok) {
-      let message = `Media request failed with ${response.status}.`;
-      try {
-        const payload = await response.json();
-        message = payload.errors?.join("; ") || message;
-      } catch (_) {
-        // Keep the status message when a proxy returns a non-JSON error page.
-      }
-      throw new Error(message);
-    }
-    return await response.blob();
-  } catch (error) {
-    if (error?.name === "AbortError") throw new Error("Media generation timed out. Please try again.");
-    if (error instanceof TypeError) throw new Error("The media service could not be reached. Please try again.");
-    throw error;
-  } finally {
-    window.clearTimeout(timeout);
-  }
-}
-
-
 export function fetchBootstrap(apiBase) {
   return requestJson(`${apiBase}/bootstrap`);
 }

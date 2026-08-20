@@ -1,5 +1,4 @@
 let config;
-let imageUrl;
 let spokenStory = null;
 
 function setupTheme() {
@@ -42,10 +41,6 @@ function renderStory(topic, story) {
   stage.replaceChildren();
   const layout = document.createElement("div");
   layout.className = "story-layout";
-  const illustration = document.createElement("div");
-  illustration.className = "illustration-card pending";
-  illustration.innerHTML = '<div class="illustration-placeholder"><span>✦</span><small>Painting your story...</small><progress class="media-progress" id="image-progress" max="100" value="20"></progress></div>';
-  illustration.id = "illustration-card";
   const article = document.createElement("article");
   article.className = "story-card";
   article.innerHTML = `<p class="story-kicker">A WonderTale about</p><h2>${escapeHtml(topic)}</h2><div class="story-copy"></div><div class="story-actions"><button class="listen-button" id="listen-button" type="button">◉ <span>Read it aloud</span></button><span class="audio-note" id="audio-note">Your browser will read this story aloud.</span><progress class="media-progress" id="audio-progress" max="100" value="0"></progress></div>`;
@@ -55,7 +50,7 @@ function renderStory(topic, story) {
     element.textContent = paragraph;
     copy.append(element);
   });
-  layout.append(illustration, article);
+  layout.append(article);
   stage.append(layout);
 }
 
@@ -68,31 +63,12 @@ function escapeHtml(value) {
     .split("'").join("&#39;");
 }
 
-async function makeMedia(topic, story) {
-  const illustration = document.getElementById("illustration-card");
-  const imagePrompt = `A charming children's storybook illustration, soft gouache and colored pencil, warm twilight palette, no words or letters, depicting ${topic}. Story mood and details: ${story.slice(0, 700)}`;
-  try {
-    const response = await post("/media/image", { prompt: imagePrompt });
-    if (imageUrl) URL.revokeObjectURL(imageUrl);
-    imageUrl = URL.createObjectURL(await response.blob());
-    illustration.classList.remove("pending");
-    illustration.replaceChildren();
-    const image = document.createElement("img");
-    image.src = imageUrl;
-    image.alt = `Storybook illustration for ${topic}`;
-    illustration.append(image);
-    document.getElementById("audio-note").textContent = "Illustration ready. Your browser voice is ready.";
-    document.getElementById("audio-progress").value = 55;
-  } catch (error) {
-    illustration.classList.remove("pending");
-    illustration.innerHTML = `<div class="media-error"><span>Illustration unavailable</span><small>${escapeHtml(error.message)}</small></div>`;
-  }
+function setupSpeech(story) {
   const button = document.getElementById("listen-button");
   const note = document.getElementById("audio-note");
   const supported = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
   button.disabled = !supported;
   note.textContent = supported ? "Ready when you are." : "Speech playback is not supported in this browser.";
-  document.getElementById("audio-progress").value = 100;
   if (supported) {
     button.addEventListener("click", () => {
       if (spokenStory) {
@@ -137,8 +113,8 @@ async function createStory(event) {
       spokenStory = null;
     }
     renderStory(payload.topic, payload.story);
-    showStatus("Your story is ready. The painting is joining us, and your browser can read it aloud.");
-    void makeMedia(payload.topic, payload.story);
+    setupSpeech(payload.story);
+    showStatus("Your story is ready. Your browser can read it aloud.");
   } catch (error) {
     showStatus(error.message, "error");
   } finally {

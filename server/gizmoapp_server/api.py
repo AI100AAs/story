@@ -7,7 +7,7 @@ import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
-from flask import Flask, Response, current_app, g, jsonify, request
+from flask import Flask, current_app, g, jsonify, request
 from werkzeug.exceptions import BadRequest, HTTPException, RequestEntityTooLarge, UnsupportedMediaType
 
 from .capabilities import capability_payload
@@ -19,7 +19,6 @@ from .capabilities.search import search_records
 from .config import scoped_path
 from .db import database_readiness, fetch_sample_nodes, get_db, insert_sample_node
 from .llm import CourseLLMError, ask
-from .media import CourseMediaError, generate_image
 
 HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 SLUG_RE = re.compile(r"^[a-z0-9-]{3,40}$")
@@ -246,20 +245,6 @@ def register_api_routes(app: Flask) -> None:
         except CourseLLMError as exc:
             return _error_response(str(exc), 503)
         return jsonify({"topic": topic, "story": text})
-
-    @app.post(scoped_path(prefix, "api/media/image"))
-    def media_image():
-        payload, error = _json_object()
-        if error:
-            return error
-        prompt = payload.get("prompt", "")
-        if not isinstance(prompt, str) or not prompt.strip():
-            return _error_response("prompt must be non-empty text", 400)
-        try:
-            result = generate_image(prompt.strip(), model="lcm-sd15", steps=4)
-        except CourseMediaError as exc:
-            return _error_response(str(exc), 503)
-        return Response(result.data, mimetype=result.content_type)
 
     if "search" in enabled_features:
         @app.get(scoped_path(prefix, "api/search"))

@@ -71,20 +71,12 @@
 .status.is-error { color: var(--danger); }
 .result-heading { display: flex; justify-content: space-between; align-items: center; margin: 3rem 0 1rem; }
 .story-grid { display: grid; grid-template-columns: minmax(12rem, .8fr) minmax(0, 1.2fr); gap: 1.2rem; }
-.illustration-card, .story-card { margin: 0; border-radius: 1.5rem; overflow: hidden; background: #fff3c8; box-shadow: 0 8px 0 #f2bd55; }
-.illustration-card { min-height: 20rem; display: flex; flex-direction: column; }
-.image-placeholder { flex: 1; display: grid; place-items: center; align-content: center; gap: .6rem; min-height: 19rem; color: #bc8b58; text-align: center; }
-.image-placeholder span { font-size: 3rem; }.image-placeholder small { max-width: 12rem; font-size: .8rem; }
-#illustration { width: 100%; flex: 1; min-height: 19rem; object-fit: cover; }
-figcaption { padding: .7rem 1rem; color: #7c715f; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; }
 .story-card { padding: clamp(1.2rem, 4vw, 2.4rem); background: #fff; }
 .story-card h2 { margin: 0 0 1.3rem; color: #254d59; font-family: "Trebuchet MS", sans-serif; font-size: 1.8rem; font-weight: 900; text-transform: capitalize; }
 #story-text { color: #46606a; line-height: 1.75; }.story-card p { margin: 0 0 1rem; }
 .listen-row { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #ece8df; }
 .listen-button { padding: .7rem 1rem; }.listen-button:disabled { opacity: .5; cursor: wait; } .listen-row audio { max-width: 100%; height: 2.2rem; } #media-note { color: var(--danger); font-size: .76rem; }
 .edit-form { margin-top: 1.7rem; padding-top: 1rem; border-top: 1px solid #ece8df; }.edit-form label { display: block; margin-bottom: .55rem; color: var(--muted); font-size: .8rem; font-weight: 800; }.edit-row { display: flex; gap: .5rem; }.edit-row input { flex: 1; }.edit-row button:disabled { opacity: .5; cursor: wait; }
-.media-progress-wrap { display: grid; gap: .35rem; max-width: 74rem; margin: 1rem auto 0; color: var(--muted); font-size: .78rem; }
-.media-progress-wrap progress { width: 100%; height: .45rem; accent-color: var(--accent); }
 .course-credit { max-width: 74rem; margin: 3rem auto 0; color: var(--muted); font-size: .75rem; line-height: 1.5; text-align: center; }
 .course-credit a { color: var(--accent); }
 body[data-dark] .text-frame { background: #171b1a; }
@@ -96,7 +88,6 @@ body[data-dark] .topic-row input { border-color: #5b8f87; background: #27332f; c
 body[data-dark] .story-settings legend { color: #b9ead9; }
 body[data-dark] .story-settings select, body[data-dark] .story-settings input, body[data-dark] .edit-row input { border-color: #59635b; background: #303831; color: #f2eee5; }
 body[data-dark] .suggestions button, body[data-dark] .quiet-button, body[data-dark] .theme-toggle { border-color: #59635b; color: #c3cbc3; }
-body[data-dark] .illustration-card { background: #303a35; }
 body[data-dark] .story-card { background: #29302b; box-shadow: 0 8px 0 #8d6d36; }
 body[data-dark] #story-text { color: #d0d7d0; }
 body[data-dark] .listen-row { border-color: #48504a; }
@@ -104,4 +95,4 @@ body[data-dark] .course-credit a { color: #8cd0bd; }
 body[data-dark] .suggestions button, body[data-dark] .quiet-button, body[data-dark] .theme-toggle { background: #27332f; }
 body[data-dark] .header-orbit { background: #3b3726; }
 @media (max-width: 760px) { .story-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .story-header { margin-bottom: 2rem; }.header-orbit { width: 4.5rem; height: 4.5rem; font-size: 1.2rem; }.header-orbit b { font-size: 1.8rem; }.topic-row, .edit-row { flex-direction: column; }.primary-button { min-height: 3rem; justify-content: space-between; }.story-grid { grid-template-columns: 1fr; }.illustration-card { min-height: 14rem; }.image-placeholder, #illustration { min-height: 13rem; } }
+@media (max-width: 640px) { .story-header { margin-bottom: 2rem; }.header-orbit { width: 4.5rem; height: 4.5rem; font-size: 1.2rem; }.header-orbit b { font-size: 1.8rem; }.topic-row, .edit-row { flex-direction: column; }.primary-button { min-height: 3rem; justify-content: space-between; } }
