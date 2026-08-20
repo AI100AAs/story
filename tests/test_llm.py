@@ -44,6 +44,7 @@ class CourseLLMTests(unittest.TestCase):
             model="course-model",
             messages=[{"role": "user", "content": "hello"}],
             max_tokens=100,
+            reasoning_effort="none",
         )
 
     def test_invalid_prompts_messages_and_token_limits_are_rejected(self):

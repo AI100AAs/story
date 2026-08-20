@@ -241,7 +241,7 @@ def register_api_routes(app: Flask) -> None:
             f"violence, and unsafe instructions.\n\n{edit_guidance}"
         )
         try:
-            text = ask(prompt, max_tokens=1200).strip()
+            text = ask(prompt, max_tokens=4096).strip()
         except CourseLLMError as exc:
             return _error_response(str(exc), 503)
         return jsonify({"topic": topic, "story": text})

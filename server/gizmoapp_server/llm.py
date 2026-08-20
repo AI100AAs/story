@@ -11,7 +11,7 @@ try:
 except ImportError:  # pragma: no cover - dependency missing until installation
     OpenAI = None
 
-DEFAULT_MAX_TOKENS = 1000
+DEFAULT_MAX_TOKENS = 4096
 MAX_ALLOWED_TOKENS = 4096
 DEFAULT_TIMEOUT_SECONDS = 30.0
 MAX_TIMEOUT_SECONDS = 55.0
@@ -111,6 +111,7 @@ def chat(messages: Sequence[dict[str, Any]], max_tokens: int = DEFAULT_MAX_TOKEN
             model=model_name(),
             messages=validated_messages,
             max_tokens=validated_max_tokens,
+            reasoning_effort="none",
         )
     except CourseLLMError:
         raise
